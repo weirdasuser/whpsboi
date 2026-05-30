@@ -54,7 +54,7 @@
             width: 0%;
             background: linear-gradient(90deg, #e74c3c, #c0392b);
             border-radius: 10px;
-            transition: width 0.2s ease;
+            transition: width 0.3s ease;
         }
 
         #loading-mb {
@@ -69,9 +69,7 @@
             height: 100%;
         }
 
-        #status {
-            display: none;
-        }
+        #status { display: none; }
     </style>
 </head>
 
@@ -81,7 +79,7 @@
         <div id="loading-bar-bg">
             <div id="loading-bar-fill"></div>
         </div>
-        <div id="loading-mb">0 MB / 0 MB (0%)</div>
+        <div id="loading-mb">0 MB / 433.87 MB (0%)</div>
     </div>
 
     <script src="main.js"></script>
@@ -94,23 +92,29 @@
     </div>
     <script src="thats-not-my-neighbor.js"></script>
     <script>
-        function formatSize(bytes) {
-            if (bytes > 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
-            if (bytes > 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-            if (bytes > 1024) return (bytes / 1024).toFixed(2) + " KB";
-            return bytes + " B";
+        const totalBytes = 410934256 + 43444261;
+        let simulatedBytes = 0;
+        let realBytes = 0;
+        let gameStarted = false;
+
+        function formatMB(bytes) {
+            return (bytes / (1024 * 1024)).toFixed(2) + " MB";
         }
 
-        const totalBytes = 410934256 + 43444261;
-        let loadedBytes = 0;
-
-        function updateLoadingUI(current, total) {
-            const useTotal = total > 0 ? total : totalBytes;
-            const percent = useTotal > 0 ? ((current / useTotal) * 100).toFixed(1) : "0";
+        function updateUI(current, total) {
+            const percent = Math.min((current / total) * 100, 99.9).toFixed(1);
             document.getElementById("loading-bar-fill").style.width = percent + "%";
             document.getElementById("loading-mb").textContent =
-                formatSize(current) + " / " + formatSize(useTotal) + " (" + percent + "%)";
+                formatMB(current) + " / " + formatMB(total) + " (" + percent + "%)";
         }
+
+        // Simulate progress until real onProgress fires
+        const interval = setInterval(() => {
+            if (gameStarted) { clearInterval(interval); return; }
+            simulatedBytes += totalBytes / 300;
+            if (simulatedBytes >= totalBytes * 0.95) simulatedBytes = totalBytes * 0.95;
+            if (realBytes === 0) updateUI(simulatedBytes, totalBytes);
+        }, 100);
 
         const GODOT_CONFIG = {
             "args": [],
@@ -141,6 +145,8 @@
                 if (mode === 'hidden') {
                     statusOverlay.remove();
                     document.getElementById('loading-overlay').remove();
+                    gameStarted = true;
+                    clearInterval(interval);
                     initializing = false;
                     return;
                 }
@@ -197,14 +203,12 @@
                 setStatusMode('progress');
                 engine.startGame({
                     'onProgress': function (current, total) {
-                        loadedBytes = current;
-                        updateLoadingUI(current, total);
-                        if (current > 0 && total > 0) {
+                        if (current > 0) {
+                            realBytes = current;
+                            const useTotal = total > 0 ? total : totalBytes;
+                            updateUI(current, useTotal);
                             statusProgress.value = current;
-                            statusProgress.max = total;
-                        } else {
-                            statusProgress.removeAttribute('value');
-                            statusProgress.removeAttribute('max');
+                            statusProgress.max = useTotal;
                         }
                     },
                 }).then(() => {
