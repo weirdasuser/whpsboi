@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeyRunner</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --panel-color: #16213e;
+            --accent-color: #0f3460;
+            --text-color: #e94560;
+            --white: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #menu-container, #game-container, #editor-container {
+            width: 800px;
+            background: var(--panel-color);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--text-color);
+        }
+
+        .level-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        /* Game Track Styles */
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #0f172a;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+            border: 2px solid var(--accent-color);
+        }
+
+        #target-zone {
+            position: absolute;
+            left: 50px;
+            top: 50px;
+            width: 80px;
+            height: 100px;
+            background-color: var(--white);
+            border-radius: 15px;
+            box-sizing: border-box;
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+            z-index: 1; 
+        }
+
+        #accuracy-popup {
+            position: absolute;
+            left: 50px;
+            top: 15px;
+            width: 80px;
+            text-align: center;
+            font-weight: 900;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            z-index: 10;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            opacity: 0;
+            transform: translateY(5px);
+            transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+            pointer-events: none;
+        }
+        #accuracy-popup.pop {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .note {
+            position: absolute;
+            top: 60px;
+            width: 60px;
+            height: 80px;
+            background: var(--text-color);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            user-select: none;
+            z-index: 5; 
+        }
+
+        .note.hold-note {
+            background: #390099;
+            border: 2px solid #9ad0f5;
+            flex-direction: column;
+            font-size: 1.2rem;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .hold-tag {
+            font-size: 0.65rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hold-tail {
+            position: absolute;
+            left: 100%;
+            top: 25px;
+            height: 30px;
+            background: rgba(154, 208, 245, 0.4);
+            border: 2px dashed #9ad0f5;
+            border-left: none;
+            z-index: 4; 
+            transform-origin: left center;
+        }
+
+        #stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        /* Custom Game Popups */
+        .game-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .game-modal h2 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #fff;
+            text-transform: uppercase;
+        }
+        
+        .game-modal.success h2 { color: #4ade80; }
+        .game-modal.fail h2 { color: var(--text-color); }
+
+        .game-modal p {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+        }
+
+        /* Editor Styles */
+        .editor-row {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input, select, textarea {
+            background: #0f172a;
+            border: 1px solid var(--accent-color);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .editor-table {
+            width: 100%;
+            text-align: left;
+            border-collapse: collapse;
+        }
+
+        .editor-table tr {
+            border-bottom: 1px solid #16213e;
+            transition: background 0.2s;
+        }
+
+        .editor-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            opacity: 0.3;
+            transition: opacity 0.2s, transform 0.2s;
+            font-size: 1.1rem;
+            padding: 4px 6px;
+        }
+
+        .editor-table tr:hover .action-btn {
+            opacity: 1;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>KeyRunner</h1>
+    </header>
+
+    <div id="menu-container">
+        <h3>Select a Level</h3>
+        <div class="level-list" id="main-levels-list"></div>
+        
+        <hr style="border-color: var(--accent-color); margin: 20px 0;">
+        
+        <h3>Custom / Import Level</h3>
+        <div class="editor-row">
+            <textarea id="import-string" placeholder="Paste level data string here..."></textarea>
+        </div>
+        <button class="btn" onclick="importLevel(false)">Play Imported Level</button>
+        <button class="btn" onclick="importLevel(true)">Import into Level Editor</button>
+        <button class="btn" onclick="switchScreen('editor')">Open Blank Editor</button>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="stats">
+            <span id="level-name">Level: 1</span>
+            <span id="score-display">Score: 0</span>
+            <span id="miss-display">Misses: 0/10</span>
+        </div>
+        <div id="game-area">
+            <div id="target-zone"></div>
+            <div id="accuracy-popup">GOOD!</div>
+            
+            <div id="popup-screen" class="game-modal hidden">
+                <h2 id="popup-title">Level Complete!</h2>
+                <p id="popup-body">Final Score: 0</p>
+                <div>
+                    <button class="btn" id="replay-btn">Replay Level</button>
+                    <button class="btn" onclick="quitGame()">Return to Menu</button>
+                </div>
+            </div>
+            
+        </div>
+        <div style="margin-top: 15px; text-align: right;">
+            <button class="btn" onclick="quitGame()">Quit to Menu</button>
+        </div>
+    </div>
+
+    <div id="editor-container" class="hidden">
+        <h3>Level Creator</h3>
+        <div class="editor-row">
+            <label>Level Name: <input type="text" id="edit-name" value="My Custom Level"></label>
+            <label>Max Misses Allowed: <input type="number" id="edit-max-misses" value="10" min="1"></label>
+            <label style="color: #60a5fa;">Copy/Paste Offset Time (s): <input type="number" id="edit-copy-offset" value="0.2" step="0.05"></label>
+        </div>
+        
+        <h4>Add Note</h4>
+        <div class="editor-row">
+            <label>Key: <input type="text" id="edit-key" maxlength="1" size="3" value="A" style="text-transform: uppercase;"></label>
+            <label>Time (seconds): <input type="number" id="edit-time" step="0.1" value="1.0" min="0"></label>
+            <label>Speed (px/frame): <input type="number" id="edit-speed" value="5" min="1"></label>
+            <label>Type: 
+                <select id="edit-type" onchange="toggleEditorDuration()">
+                    <option value="tap">Tap</option>
+                    <option value="hold">Hold</option>
+                </select>
+            </label>
+            <label id="edit-duration-label" class="hidden">Duration (seconds): <input type="number" id="edit-duration" step="0.1" value="1.0"></label>
+            <button class="btn" onclick="addNoteFromEditor()">Add Note</button>
+        </div>
+
+        <h4>Current Notes Track (Hover row to edit)</h4>
+        <div style="max-height: 250px; overflow-y: auto; background: #0f172a; padding: 10px; border-radius: 5px;" id="editor-notes-list"></div>
+
+        <div class="editor-row" style="margin-top: 20px;">
+            <button class="btn" onclick="exportLevelString()">Generate Level Data String</button>
+            <button class="btn" onclick="switchScreen('menu')">Back to Menu</button>
+        </div>
+        <textarea id="export-output" readonly placeholder="Your generated data string will show up here. Copy it to share!"></textarea>
+    </div>
+
+    <script>
+        // ==========================================
+        // LEVEL CONFIGURATION
+        // ==========================================
+        const mainLevels = {
+            1: {
+                name: "baby boo",
+                maxMisses: 5,
+                notes: [
+                    { key: "A", time: 1.0, speed: 4, type: "tap" },
+                    { key: "S", time: 2.5, speed: 4, type: "tap" },
+                    { key: "D", time: 4.0, speed: 4, type: "tap" },
+                    { key: "F", time: 5.5, speed: 4, type: "tap" },
+                    { key: "A", time: 7.0, speed: 4, type: "hold", duration: 2.0 }
+                ]
+            },
+            2: {
+                name: "tungopolis",
+                maxMisses: 5,
+                notes: [
+                    { key: "T", time: 1.2, speed: 4, type: "tap" },
+                    { key: "U", time: 1.4, speed: 4, type: "tap" },
+                    { key: "N", time: 1.6, speed: 4, type: "tap" },
+                    { key: "G", time: 1.8, speed: 4, type: "tap" },
+                    { key: "T", time: 2.2, speed: 4, type: "tap" },
+                    { key: "U", time: 3.4, speed: 4, type: "tap" },
+                    { key: "N", time: 3.6, speed: 4, type: "tap" },
+                    { key: "G", time: 3.8, speed: 4, type: "tap" },
+                ]
+            },
+             3: {
+                name: "learn your abcs",
+                maxMisses: 5,
+                notes: [
+    { key: "A", time: 1, speed: 10, type: "tap" },
+    { key: "B", time: 2, speed: 10, type: "tap" },
+    { key: "C", time: 3, speed: 10, type: "tap" },
+    { key: "D", time: 4, speed: 10, type: "tap" },
+    { key: "E", time: 5, speed: 10, type: "tap" },
+    { key: "F", time: 6, speed: 10, type: "tap" },
+    { key: "G", time: 7, speed: 10, type: "tap" },
+    { key: "H", time: 8, speed: 10, type: "tap" },
+    { key: "I", time: 9, speed: 10, type: "tap" },
+    { key: "J", time: 10, speed: 10, type: "tap" },
+    { key: "K", time: 11, speed: 10, type: "tap" },
+
+    { key: "L", time: 11.4, speed: 10, type: "tap" },
+    { key: "M", time: 11.8, speed: 10, type: "tap" },
+    { key: "N", time: 12.2, speed: 10, type: "tap" },
+    { key: "O", time: 12.6, speed: 10, type: "tap" },
+    { key: "P", time: 13.0, speed: 10, type: "tap" },
+
+    { key: "Q", time: 14.0, speed: 10, type: "tap" },
+    { key: "R", time: 15.0, speed: 10, type: "tap" },
+    { key: "S", time: 16.0, speed: 10, type: "tap" },
+    { key: "T", time: 17.0, speed: 10, type: "tap" },
+    { key: "U", time: 18.0, speed: 10, type: "tap" },
+    { key: "V", time: 19.0, speed: 10, type: "tap" },
+    { key: "W", time: 20.0, speed: 10, type: "tap" },
+    { key: "X", time: 21.0, speed: 10, type: "tap" },
+    { key: "Y", time: 22.0, speed: 10, type: "tap" },
+    { key: "Z", time: 23.0, speed: 10, type: "tap" },
+]
+            },
+        };
+
+        // ==========================================
+        // GAME ENGINE CODE
+        // ==========================================
+        let currentLevelSetupRaw = null;
+        let currentLevelData = null;
+        let activeNotes = [];
+        let gameLoopId = null;
+        let startTime = 0;
+        let score = 0;
+        let misses = 0;
+        let maxMissesAllowed = 10;
+        let gameActive = false;
+        let accuracyTimeoutId = null;
+        const pressedKeys = {};
+
+        function switchScreen(screen) {
+            document.getElementById('menu-container').classList.add('hidden');
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('editor-container').classList.add('hidden');
+
+            if (screen === 'menu') document.getElementById('menu-container').classList.remove('hidden');
+            if (screen === 'game') document.getElementById('game-container').classList.remove('hidden');
+            if (screen === 'editor') {
+                document.getElementById('editor-container').classList.remove('hidden');
+                renderEditorNotes();
+            }
+        }
+
+        function initMenu() {
+            const listContainer = document.getElementById('main-levels-list');
+            listContainer.innerHTML = '';
+            Object.keys(mainLevels).forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = mainLevels[key].name;
+                btn.onclick = () => startGame(mainLevels[key]);
+                listContainer.appendChild(btn);
+            });
+        }
+
+        function startGame(levelData) {
+            currentLevelSetupRaw = levelData; 
+            currentLevelData = JSON.parse(JSON.stringify(levelData)); 
+            switchScreen('game');
+            
+            score = 0;
+            misses = 0;
+            maxMissesAllowed = currentLevelData.maxMisses || 10;
+            
+            document.getElementById('level-name').innerText = currentLevelData.name;
+            document.getElementById('score-display').innerText = `Score: ${score}`;
+            document.getElementById('miss-display').innerText = `Misses: ${misses}/${maxMissesAllowed}`;
+            
+            document.getElementById('popup-screen').classList.add('hidden');
+            clearAccuracyPop();
+
+            const gameArea = document.getElementById('game-area');
+            gameArea.querySelectorAll('.note').forEach(n => n.remove());
+
+            activeNotes = currentLevelData.notes.map(note => ({
+                ...note,
+                spawned: false,
+                domElement: null,
+                currentX: 800, 
+                passedTarget: false,
+                isHolding: false,
+                holdCompleted: false
+            }));
+
+            gameActive = true;
+            startTime = performance.now();
+            gameLoopId = requestAnimationFrame(updateGame);
+
+            document.getElementById('replay-btn').onclick = () => startGame(currentLevelSetupRaw);
+        }
+
+        function triggerAccuracyPop(text, color) {
+            const el = document.getElementById('accuracy-popup');
+            el.innerText = text;
+            el.style.color = color;
+            el.classList.remove('pop');
+            void el.offsetWidth; 
+            el.classList.add('pop');
+
+            clearTimeout(accuracyTimeoutId);
+            accuracyTimeoutId = setTimeout(clearAccuracyPop, 500);
+        }
+
+        function clearAccuracyPop() {
+            document.getElementById('accuracy-popup').classList.remove('pop');
+        }
+
+        function showEndPopup(isWin) {
+            gameActive = false;
+            cancelAnimationFrame(gameLoopId);
+            
+            const popup = document.getElementById('popup-screen');
+            const title = document.getElementById('popup-title');
+            const body = document.getElementById('popup-body');
+            
+            popup.className = "game-modal " + (isWin ? "success" : "fail");
+            title.innerText = isWin ? "Level Complete!" : "Failed";
+            body.innerText = isWin ? `Spectacular! Final Score: ${score}` : "Missed too many keys.";
+            
+            popup.classList.remove('hidden');
+        }
+
+        function quitGame() {
+            gameActive = false;
+            cancelAnimationFrame(gameLoopId);
+            document.getElementById('popup-screen').classList.add('hidden');
+            clearAccuracyPop();
+            switchScreen('menu');
+        }
+
+        function updateGame(timestamp) {
+            if (!gameActive) return;
+
+            const elapsedTime = (timestamp - startTime) / 1000;
+            const gameArea = document.getElementById('game-area');
+
+            activeNotes.forEach(note => {
+                if (!note.spawned && elapsedTime >= note.time) {
+                    note.spawned = true;
+                    
+                    const el = document.createElement('div');
+                    el.className = `note ${note.type === 'hold' ? 'hold-note' : ''}`;
+                    
+                    if (note.type === 'hold') {
+                        const letterSpan = document.createElement('span');
+                        letterSpan.innerText = note.key.toUpperCase();
+                        
+                        const tagSpan = document.createElement('span');
+                        tagSpan.className = 'hold-tag';
+                        tagSpan.innerText = 'HOLD';
+                        
+                        el.appendChild(letterSpan);
+                        el.appendChild(tagSpan);
+
+                        const tail = document.createElement('div');
+                        tail.className = 'hold-tail';
+                        const tailWidth = note.duration * note.speed * 60; 
+                        tail.style.width = `${tailWidth}px`;
+                        el.appendChild(tail);
+                        note.tailElement = tail;
+                    } else {
+                        el.innerText = note.key.toUpperCase();
+                    }
+                    
+                    el.style.left = `${note.currentX}px`;
+                    gameArea.appendChild(el);
+                    note.domElement = el;
+                }
+            });
+
+            activeNotes.forEach(note => {
+                if (note.spawned && note.domElement) {
+                    if (note.type === 'hold' && note.isHolding) {
+                        if (pressedKeys[note.key.toUpperCase()]) {
+                            score += 1;
+                            document.getElementById('score-display').innerText = `Score: ${score}`;
+                            
+                            let currentTailWidth = parseFloat(note.tailElement.style.width);
+                            currentTailWidth -= note.speed;
+                            
+                            if (currentTailWidth <= 0) {
+                                note.isHolding = false;
+                                note.holdCompleted = true;
+                                note.domElement.remove();
+                                note.domElement = null;
+                            } else {
+                                note.tailElement.style.width = `${currentTailWidth}px`;
+                            }
+                        } else {
+                            note.isHolding = false;
+                            note.holdCompleted = true;
+                            note.domElement.style.opacity = 0.4;
+                            registerMiss();
+                        }
+                    } else {
+                        note.currentX -= note.speed;
+                        note.domElement.style.left = `${note.currentX}px`;
+                    }
+
+                    if (note.currentX < -100 && !note.passedTarget) {
+                        note.passedTarget = true;
+                        if (note.domElement) {
+                            note.domElement.remove();
+                            note.domElement = null;
+                        }
+                        if (note.type === 'tap' || (note.type === 'hold' && !note.holdCompleted)) {
+                            registerMiss();
+                        }
+                    }
+                }
+            });
+
+            activeNotes = activeNotes.filter(note => note.domElement !== null || !note.spawned);
+
+            if (misses >= maxMissesAllowed) {
+                showEndPopup(false);
+                return;
+            }
+
+            if (activeNotes.length === 0 && misses < maxMissesAllowed) {
+                showEndPopup(true);
+                return;
+            }
+
+            gameLoopId = requestAnimationFrame(updateGame);
+        }
+
+        function registerMiss() {
+            misses++;
+            document.getElementById('miss-display').innerText = `Misses: ${misses}/${maxMissesAllowed}`;
+        }
+
+        // ==========================================
+        // INPUT CONTROLS / ACCURACY
+        // ==========================================
+        window.addEventListener('keydown', (e) => {
+            const keyStr = e.key.toUpperCase();
+            if (pressedKeys[keyStr]) return; 
+            pressedKeys[keyStr] = true;
+
+            if (!gameActive) return;
+
+            const targetCenter = 90;
+            const targetMin = 50;
+            const targetMax = 130;
+
+            let matchNote = activeNotes.find(note => 
+                note.spawned && 
+                !note.passedTarget && 
+                note.key.toUpperCase() === keyStr &&
+                note.currentX >= (targetMin - 45) && 
+                note.currentX <= (targetMax + 25)
+            );
+
+            if (matchNote) {
+                const noteCenter = matchNote.currentX + 30;
+                const distanceOffset = Math.abs(noteCenter - targetCenter);
+                let pointsMultiplier = 1;
+
+                if (distanceOffset <= 12) {
+                    triggerAccuracyPop("PERFECT!", "#4ade80");
+                    pointsMultiplier = 1.5;
+                } else if (distanceOffset <= 28) {
+                    triggerAccuracyPop("GOOD!", "#60a5fa");
+                    pointsMultiplier = 1.0;
+                } else {
+                    triggerAccuracyPop("BAD!", "#fbbf24");
+                    pointsMultiplier = 0.4;
+                }
+
+                if (matchNote.type === 'tap') {
+                    score += Math.round(100 * pointsMultiplier);
+                    document.getElementById('score-display').innerText = `Score: ${score}`;
+                    matchNote.domElement.remove();
+                    matchNote.domElement = null;
+                } else if (matchNote.type === 'hold') {
+                    matchNote.isHolding = true;
+                    matchNote.domElement.style.left = `${targetMin + 10}px`;
+                    score += Math.round(50 * pointsMultiplier);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            pressedKeys[e.key.toUpperCase()] = false;
+        });
+
+        // ==========================================
+        // LEVEL EDITOR LOGIC
+        // ==========================================
+        let createdNotes = [];
+
+        function toggleEditorDuration() {
+            const type = document.getElementById('edit-type').value;
+            const durationLabel = document.getElementById('edit-duration-label');
+            if (type === 'hold') {
+                durationLabel.classList.remove('hidden');
+            } else {
+                durationLabel.classList.add('hidden');
+            }
+        }
+
+        function addNoteFromEditor() {
+            const key = document.getElementById('edit-key').value.toUpperCase() || 'A';
+            const time = parseFloat(document.getElementById('edit-time').value) || 1.0;
+            const speed = parseInt(document.getElementById('edit-speed').value) || 5;
+            const type = document.getElementById('edit-type').value;
+            
+            let noteObj = { key, time, speed, type };
+            if (type === 'hold') {
+                noteObj.duration = parseFloat(document.getElementById('edit-duration').value) || 1.0;
+            }
+
+            createdNotes.push(noteObj);
+            createdNotes.sort((a,b) => a.time - b.time);
+            renderEditorNotes();
+        }
+
+        // Copy and Paste handling logic with custom offset handling
+        function copyPasteEditorNote(index) {
+            const sourceNote = createdNotes[index];
+            const offset = parseFloat(document.getElementById('edit-copy-offset').value) || 0;
+            
+            // Generate a perfectly offset clean duplicate note structural object
+            let duplicatedNote = {
+                key: sourceNote.key,
+                time: Math.max(0, parseFloat((sourceNote.time + offset).toFixed(3))), // Prevent float precision bugs
+                speed: sourceNote.speed,
+                type: sourceNote.type
+            };
+            
+            if (sourceNote.type === 'hold') {
+                duplicatedNote.duration = sourceNote.duration;
+            }
+
+            createdNotes.push(duplicatedNote);
+            createdNotes.sort((a,b) => a.time - b.time);
+            renderEditorNotes();
+        }
+
+        function deleteEditorNote(index) {
+            createdNotes.splice(index, 1);
+            renderEditorNotes();
+        }
+
+        function renderEditorNotes() {
+            const container = document.getElementById('editor-notes-list');
+            if (createdNotes.length === 0) {
+                container.innerHTML = '<em style="color:#666;">No notes added yet. Use the configuration panel above.</em>';
+                return;
+            }
+
+            let html = '<table class="editor-table">';
+            html += '<tr><th>Seq</th><th>Key</th><th>Time (s)</th><th>Speed</th><th>Type</th><th>Duration</th><th style="text-align:right; padding-right:15px;">Actions</th></tr>';
+            
+            createdNotes.forEach((n, idx) => {
+                html += `<tr>
+                    <td>${idx+1}</td>
+                    <td style="color:var(--text-color); font-weight:bold;">${n.key}</td>
+                    <td>${n.time}s</td>
+                    <td>${n.speed}</td>
+                    <td>${n.type}</td>
+                    <td>${n.duration ? n.duration+'s' : '-'}</td>
+                    <td style="text-align:right; padding-right:10px;">
+                        <button class="action-btn" onclick="copyPasteEditorNote(${idx})" title="Duplicate Note with Offset" style="color: #60a5fa;">📋</button>
+                        <button class="action-btn" onclick="deleteEditorNote(${idx})" title="Delete Note" style="color: var(--text-color);">🗑️</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function exportLevelString() {
+            const name = document.getElementById('edit-name').value || "Custom Export Level";
+            const maxMisses = parseInt(document.getElementById('edit-max-misses').value) || 10;
+            const levelPackage = { 
+                name: name, 
+                maxMisses: maxMisses,
+                notes: createdNotes 
+            };
+            const exportString = btoa(unescape(encodeURIComponent(JSON.stringify(levelPackage))));
+            document.getElementById('export-output').value = exportString;
+        }
+
+        function importLevel(loadIntoEditor = false) {
+            const rawString = document.getElementById('import-string').value.trim();
+            if(!rawString) {
+                alert("Please paste a generated level configuration string first!");
+                return;
+            }
+            try {
+                const parsedLevel = JSON.parse(decodeURIComponent(escape(atob(rawString))));
+                if (parsedLevel && parsedLevel.notes) {
+                    if (loadIntoEditor) {
+                        document.getElementById('edit-name').value = parsedLevel.name || "Imported Level";
+                        document.getElementById('edit-max-misses').value = parsedLevel.maxMisses || 10;
+                        createdNotes = parsedLevel.notes;
+                        switchScreen('editor');
+                    } else {
+                        startGame(parsedLevel);
+                    }
+                } else {
+                    alert("Invalid level data string composition.");
+                }
+            } catch(e) {
+                alert("Failed to read string data package.");
+            }
+        }
+
+        initMenu();
+    </script>
+</body>
+</html>
